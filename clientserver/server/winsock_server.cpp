@@ -113,9 +113,12 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
           fclose(f);
           cout << "File " << file_name << " sent!" << endl;
         }
-    } else if (iResult == 0)
+    } else if (iResult == 0) {
       cout << "Connection closing..." << endl;
-    else {
+      closesocket(clientSocket);
+      WSACleanup();
+      return -1;
+    } else {
       cout << "Recv failed" << endl;
       closesocket(clientSocket);
       WSACleanup();

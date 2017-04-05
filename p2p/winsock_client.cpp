@@ -8,9 +8,13 @@ using namespace std;
 #define BUFFER_SIZE 1024000
 #define FILE_NAME_MAX 1024
 #define PORT 10234
-#define IP_ADDRESS "127.0.0.1"
 
 int main() {
+  //get ip
+  char IP_ADDRESS[100];
+  memset(IP_ADDRESS, 0, 100);
+  cin.getline(IP_ADDRESS, sizeof(IP_ADDRESS));
+
   WSADATA WSA;
   SOCKET  clientSocket;
   struct  sockaddr_in serverAddr;
@@ -73,8 +77,6 @@ int main() {
           cout << "Write failed" << endl;
           break;
         }
-        // break;
-        // if (feof(f)) break;
       }
       cout << "Got file from server: " << fileName << endl;
     }

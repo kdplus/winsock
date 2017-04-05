@@ -7,10 +7,19 @@ using namespace std;
 
 #define BUFFER_SIZE 1024000
 #define FILE_NAME_MAX 1024
-#define PORT 10234
-#define IP_ADDRESS "127.0.0.1"
+// #define PORT 10234
 
 int main() {
+  //get ip
+  char IP_ADDRESS[100];
+  memset(IP_ADDRESS, 0, 100);
+  cout << "Connect to where (IP_ADDRESS): " << endl;
+  cin.getline(IP_ADDRESS, sizeof(IP_ADDRESS));
+  unsigned short int PORT;
+  cout << "PORT: " << endl;
+  cin >> PORT;
+  cin.get();
+
   WSADATA WSA;
   SOCKET  clientSocket;
   struct  sockaddr_in serverAddr;
@@ -45,12 +54,16 @@ int main() {
     return -1;
   }
   cout << "Connected!" << endl;
+
+  //send&recv
   while (true) {
     memset(fileName, 0, FILE_NAME_MAX);
     cout << "Input the file name: " << endl;
     cin.getline(fileName, sizeof(fileName));
-    cout << (int) fileName[0] << endl;
-    if ((int)(fileName[0]) == 27) break;
+    if ((fileName[0]) == 'q') {
+      cout << "quiting.." << endl;
+      break;
+    }
     iResult = send(clientSocket, fileName, (int) strlen(fileName), 0);
     if (iResult == SOCKET_ERROR) {
       cout << "Send failed with error" << endl;
@@ -73,8 +86,6 @@ int main() {
           cout << "Write failed" << endl;
           break;
         }
-        // break;
-        // if (feof(f)) break;
       }
       cout << "Got file from server: " << fileName << endl;
     }
