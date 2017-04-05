@@ -7,20 +7,27 @@ using namespace std;
 
 #define BUFFER_SIZE 1024000
 #define FILE_NAME_MAX 1024
-#define PORT 10234
-#define IP_ADDRESS "127.0.0.1"
+#define MY_PORT 10235
+#define MY_ADDRESS "127.0.0.1"
 DWORD WINAPI ClientThread(LPVOID lpParameter);
+DWORD WINAPI MyThread(LPVOID ipParameter);
 
 int main() {
+  //get ip to connect
+  char IP_ADDRESS[100];
+  memset(IP_ADDRESS, 0, 100);
+
   WSADATA WSA;
-  SOCKET serverSocket, clientSocket;
-  struct sockaddr_in serverAddr, clientAddr;
+  SOCKET serverSocket, clientSocket, myclientSocket;
+  struct sockaddr_in serverAddr, clientAddr, connectAddr;
   int addrLen = 0;
   int iResult = 0;
   HANDLE hThread = NULL;
+
+  //for bind my own serverSocket
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_addr.s_addr = inet_addr(IP_ADDRESS);
-  serverAddr.sin_port = htons(PORT);
+  serverAddr.sin_addr.s_addr = inet_addr(MY_ADDRESS);
+  serverAddr.sin_port = htons(MY_PORT);
   memset(serverAddr.sin_zero,0x00,8);
 
   //init windows socket dll
@@ -54,6 +61,38 @@ int main() {
   }
   cout << "Server is listening now" << endl;
 
+
+  //to connect other peer
+  unsigned short int PORT;
+  cout << "Connect to where (IP_ADDRESS): " << endl;
+  cin.getline(IP_ADDRESS, sizeof(IP_ADDRESS));
+  cout << "PORT: " << endl;
+  cin >> PORT;
+  cin.get();
+  connectAddr.sin_family = AF_INET;
+  connectAddr.sin_addr.s_addr = inet_addr(IP_ADDRESS);
+  connectAddr.sin_port = htons(PORT);
+  memset(serverAddr.sin_zero,0x00,8);
+
+  //create myclient socket
+  myclientSocket = socket(AF_INET, SOCK_STREAM, 0);
+  if (myclientSocket == INVALID_SOCKET) {
+    cout << "Create myclientSocket failed!" << endl;
+    return -1;
+  }
+
+  //connect
+  iResult = connect(myclientSocket, (struct sockaddr*) &connectAddr, sizeof(connectAddr));
+  if (iResult == SOCKET_ERROR) {
+    cout << "Connect failed" << endl;
+    closesocket(myclientSocket);
+    return -1;
+  }
+  cout << "Connected!" << endl;
+
+  HANDLE tThread = CreateThread(NULL, 0, MyThread, (LPVOID)myclientSocket, 0, NULL);
+  CloseHandle(tThread);
+
   //Accept
   while(true) {
     addrLen = sizeof(clientAddr);
@@ -64,13 +103,14 @@ int main() {
       WSACleanup();
       return -1;
     }
-    cout << "Client connected " << inet_ntoa(clientAddr.sin_addr) << "." << clientAddr.sin_port << endl;
+    cout << "Client " << inet_ntoa(clientAddr.sin_addr) << "." << clientAddr.sin_port << " connected you!" << endl;
     hThread = CreateThread(NULL, 0, ClientThread, (LPVOID)clientSocket, 0, NULL);
     CloseHandle(hThread);
   }
 
   closesocket(serverSocket);
   closesocket(clientSocket);
+  closesocket(myclientSocket);
   WSACleanup();
   return 0;
 }
@@ -113,9 +153,12 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
           fclose(f);
           cout << "File " << file_name << " sent!" << endl;
         }
-    } else if (iResult == 0)
+    } else if (iResult == 0) {
       cout << "Connection closing..." << endl;
-    else {
+      closesocket(clientSocket);
+      WSACleanup();
+      return -1;
+    } else {
       cout << "Recv failed" << endl;
       closesocket(clientSocket);
       WSACleanup();
@@ -123,4 +166,46 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
     }
   } while (iResult > 0);
   return 0;
+}
+
+DWORD WINAPI MyThread(LPVOID ipParameter) {
+  SOCKET myclientSocket = (SOCKET)ipParameter;
+  char fileName[FILE_NAME_MAX];
+  char buffer[BUFFER_SIZE];
+  int iResult = 0;
+  while (true) {
+    memset(fileName, 0, FILE_NAME_MAX);
+    cout << "Input the file name: " << endl;
+    cin.getline(fileName, sizeof(fileName));
+    if ((fileName[0]) == 'q') {
+      cout << "quiting.." << endl;
+      break;
+    }
+    iResult = send(myclientSocket, fileName, (int) strlen(fileName), 0);
+    if (iResult == SOCKET_ERROR) {
+      cout << "Send failed with error" << endl;
+      closesocket(myclientSocket);
+      WSACleanup();
+      return -1;
+    }
+    cout << "Bytes Sent: " << iResult << endl;
+    FILE *f = fopen(fileName, "wb");
+    if (f == NULL) {
+      cout << "can't open the a file to write" << endl;
+      return -1;
+    } else {
+      while ((iResult = recv(myclientSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+        // cout << buffer << endl;
+        // cout << iResult<<endl;
+        if (iResult > 0 && buffer[0] == 'e' && buffer[1] == 'o' && buffer[2] == 'f')
+            break;
+        if (fwrite(buffer, sizeof(char), iResult, f) < iResult) {
+          cout << "Write failed" << endl;
+          break;
+        }
+      }
+      cout << "Got file from server: " << fileName << endl;
+    }
+    fclose(f);
+  }
 }
