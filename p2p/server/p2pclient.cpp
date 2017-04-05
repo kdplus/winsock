@@ -32,21 +32,21 @@ int main() {
 
   //init windows socket dll
   if (WSAStartup(MAKEWORD(2, 2), &WSA) != 0) {
-    cout << "Error at WSAStartup()" << endl;
+    cout << "[Server]: Error at WSAStartup()" << endl;
     return -1;
   }
 
   //create socket
   serverSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (serverSocket == INVALID_SOCKET) {
-    cout << "Create socket failed!" << endl;
+    cout << "[Server]: Create socket failed!" << endl;
     return -1;
   }
 
   //bind
   iResult = bind(serverSocket,(struct sockaddr*)&serverAddr,sizeof(serverAddr));
   if (iResult == SOCKET_ERROR) {
-    cout << "Bind failed with error" << endl;
+    cout << "[Server]: Bind failed with error" << endl;
     closesocket(serverSocket);
     WSACleanup();
     return -1;
@@ -54,19 +54,19 @@ int main() {
 
   //ListenSocket
   if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) {
-    cout << "Listen function failed with error" << endl;
+    cout << "[Server]: Listen function failed with error" << endl;
     closesocket(serverSocket);
     WSACleanup();
     return -1;
   }
-  cout << "Server is listening now" << endl;
+  cout << "[Server]: Server is listening now" << endl;
 
 
   //to connect other peer
   unsigned short int PORT;
-  cout << "Connect to where (IP_ADDRESS): " << endl;
+  cout << "[Client]: Connect to where (IP_ADDRESS): " << endl;
   cin.getline(IP_ADDRESS, sizeof(IP_ADDRESS));
-  cout << "PORT: " << endl;
+  cout << "[Client]: PORT: " << endl;
   cin >> PORT;
   cin.get();
   connectAddr.sin_family = AF_INET;
@@ -77,18 +77,18 @@ int main() {
   //create myclient socket
   myclientSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (myclientSocket == INVALID_SOCKET) {
-    cout << "Create myclientSocket failed!" << endl;
+    cout << "[Client]: Create myclientSocket failed!" << endl;
     return -1;
   }
 
   //connect
   iResult = connect(myclientSocket, (struct sockaddr*) &connectAddr, sizeof(connectAddr));
   if (iResult == SOCKET_ERROR) {
-    cout << "Connect failed" << endl;
+    cout << "[Client]: Connect failed" << endl;
     closesocket(myclientSocket);
     return -1;
   }
-  cout << "Connected!" << endl;
+  cout << "[Client]: Connected!" << endl;
 
   HANDLE tThread = CreateThread(NULL, 0, MyThread, (LPVOID)myclientSocket, 0, NULL);
   CloseHandle(tThread);
@@ -98,12 +98,12 @@ int main() {
     addrLen = sizeof(clientAddr);
     clientSocket = accept(serverSocket, (struct sockaddr*) &clientAddr, &addrLen);
     if (clientSocket == INVALID_SOCKET) {
-      cout << "Accept failed with error" << endl;
+      cout << "[Server]:Accept failed with error" << endl;
       closesocket(serverSocket);
       WSACleanup();
       return -1;
     }
-    cout << "Client " << inet_ntoa(clientAddr.sin_addr) << "." << clientAddr.sin_port << " connected you!" << endl;
+    cout << "[Server]: Client " << inet_ntoa(clientAddr.sin_addr) << "." << clientAddr.sin_port << " connected you!" << endl;
     hThread = CreateThread(NULL, 0, ClientThread, (LPVOID)clientSocket, 0, NULL);
     CloseHandle(hThread);
   }
@@ -127,13 +127,13 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
     iResult = recv(clientSocket, buffer, BUFFER_SIZE, 0);
 
     if (iResult > 0) {
-        cout << "Bytes received: " << iResult << endl;
+        cout << "[Server]: Bytes received: " << iResult << endl;
         strncpy(file_name, buffer, FILE_NAME_MAX);
-        cout << "Client request " << file_name << endl;
+        cout << "[Server]: Client request " << file_name << endl;
         //open file
         FILE *f = fopen(file_name, "rb");
         if (f == NULL) {
-          cout << "File open failed" << endl;
+          cout << "[Server]: File open failed" << endl;
           return -1;
         } else {
           //send data
@@ -141,7 +141,7 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
           while((iResult = fread(buffer, sizeof(char), BUFFER_SIZE, f)) > 0) {
             iResult = send(clientSocket, buffer, iResult, 0);
             if (iResult == SOCKET_ERROR) {
-              cout << "Send failed with error" << endl;
+              cout << "[Server]: Send failed with error" << endl;
               closesocket(clientSocket);
               WSACleanup();
               return -1;
@@ -151,15 +151,15 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
           buffer[0] = 'e'; buffer[1] = 'o'; buffer[2] = 'f';
           iResult = send(clientSocket, buffer, 10, 0);
           fclose(f);
-          cout << "File " << file_name << " sent!" << endl;
+          cout << "[Server]: File " << file_name << " sent!" << endl;
         }
     } else if (iResult == 0) {
-      cout << "Connection closing..." << endl;
+      cout << "[Server]: Connection closing..." << endl;
       closesocket(clientSocket);
       WSACleanup();
       return -1;
     } else {
-      cout << "Recv failed" << endl;
+      cout << "[Server]: Recv failed" << endl;
       closesocket(clientSocket);
       WSACleanup();
       return -1;
@@ -175,23 +175,23 @@ DWORD WINAPI MyThread(LPVOID ipParameter) {
   int iResult = 0;
   while (true) {
     memset(fileName, 0, FILE_NAME_MAX);
-    cout << "Input the file name: " << endl;
+    cout << "[Client]: Input the file name: " << endl;
     cin.getline(fileName, sizeof(fileName));
     if ((fileName[0]) == 'q') {
-      cout << "quiting.." << endl;
-      break;
+      cout << "[Client]: quiting.." << endl;
+      exit(0);
     }
     iResult = send(myclientSocket, fileName, (int) strlen(fileName), 0);
     if (iResult == SOCKET_ERROR) {
-      cout << "Send failed with error" << endl;
+      cout << "[Client]: Send failed with error" << endl;
       closesocket(myclientSocket);
       WSACleanup();
       return -1;
     }
-    cout << "Bytes Sent: " << iResult << endl;
+    cout << "[Client]: Bytes Sent: " << iResult << endl;
     FILE *f = fopen(fileName, "wb");
     if (f == NULL) {
-      cout << "can't open the a file to write" << endl;
+      cout << "[Client]: can't open the a file to write" << endl;
       return -1;
     } else {
       while ((iResult = recv(myclientSocket, buffer, BUFFER_SIZE, 0)) > 0) {
@@ -200,11 +200,11 @@ DWORD WINAPI MyThread(LPVOID ipParameter) {
         if (iResult > 0 && buffer[0] == 'e' && buffer[1] == 'o' && buffer[2] == 'f')
             break;
         if (fwrite(buffer, sizeof(char), iResult, f) < iResult) {
-          cout << "Write failed" << endl;
+          cout << "[Client]: Write failed" << endl;
           break;
         }
       }
-      cout << "Got file from server: " << fileName << endl;
+      cout << "[Client]: Got file from server: " << fileName << endl;
     }
     fclose(f);
   }
