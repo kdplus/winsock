@@ -89,7 +89,7 @@ int main() {
     return -1;
   }
   cout << "[Client]: Connected!" << endl;
-
+  cout << "[Client]: Input the file name: " << endl;
   HANDLE tThread = CreateThread(NULL, 0, MyThread, (LPVOID)myclientSocket, 0, NULL);
   CloseHandle(tThread);
 
@@ -175,7 +175,6 @@ DWORD WINAPI MyThread(LPVOID ipParameter) {
   int iResult = 0;
   while (true) {
     memset(fileName, 0, FILE_NAME_MAX);
-    cout << "[Client]: Input the file name: " << endl;
     cin.getline(fileName, sizeof(fileName));
     if ((fileName[0]) == 'q') {
       cout << "[Client]: quiting.." << endl;
