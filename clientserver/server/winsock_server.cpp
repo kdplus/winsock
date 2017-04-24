@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <winsock2.h>
 #include <iostream>
+#include <time.h>
+#include <windows.h>
 #pragma comment(lib, "ws2_32.lib")
 using namespace std;
 
@@ -10,6 +12,7 @@ using namespace std;
 #define PORT 10234
 #define IP_ADDRESS "127.0.0.1"
 DWORD WINAPI ClientThread(LPVOID lpParameter);
+clock_t trans_start, trans_end;
 
 int main() {
   WSADATA WSA;
@@ -97,6 +100,7 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
           return -1;
         } else {
           //send data
+          trans_start = clock();
           memset(buffer, 0, BUFFER_SIZE);
           while((iResult = fread(buffer, sizeof(char), BUFFER_SIZE, f)) > 0) {
             iResult = send(clientSocket, buffer, iResult, 0);
@@ -111,7 +115,10 @@ DWORD WINAPI ClientThread(LPVOID ipParameter) {
           buffer[0] = 'e'; buffer[1] = 'o'; buffer[2] = 'f';
           iResult = send(clientSocket, buffer, 10, 0);
           fclose(f);
+          trans_end = clock();
           cout << "File " << file_name << " sent!" << endl;
+          cout << "This used " << (double)(trans_end - trans_start)/CLOCKS_PER_SEC << " Second" << endl;
+          cout << endl;
         }
     } else if (iResult == 0) {
       cout << "Connection closing..." << endl;
